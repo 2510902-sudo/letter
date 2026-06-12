@@ -1,0 +1,808 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>선생님께 편지 쓰기 & 은하수 게시판 ✉️</title>
+    <!-- Tailwind CSS v4 Browser CDN -->
+    <script src="https://unpkg.com/@tailwindcss/browser@4"></script>
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap');
+      
+      body {
+        font-family: 'Noto Sans KR', sans-serif;
+        background-color: #02040d;
+      }
+
+      /* Multi-layered dynamic skies */
+      .sky-layer {
+        position: absolute;
+        inset: 0;
+        transition: opacity 8000ms cubic-bezier(0.4, 0, 0.2, 1);
+        pointer-events: none;
+        z-index: 0;
+      }
+      
+      /* Clouds and floating effects */
+      .cloud {
+        position: absolute;
+        pointer-events: none;
+        filter: blur(10px);
+        transform: translateZ(0); /* Hardware accelerated */
+      }
+      @keyframes floatCloud {
+        from { transform: translateX(-300px); }
+        to { transform: translateX(calc(100vw + 300px)); }
+      }
+
+      /* Twinkling Stars dynamically placed */
+      .star {
+        position: absolute;
+        width: 2px;
+        height: 2px;
+        background-color: #ffffff;
+        border-radius: 50%;
+        opacity: 0.1;
+        animation: twinkle ease-in-out infinite alternate;
+      }
+      @keyframes twinkle {
+        0% { opacity: 0.15; transform: scale(0.8); }
+        100% { opacity: 1; transform: scale(1.3); }
+      }
+
+      /* Emoji pop animation */
+      .emoji-pop {
+        animation: popScale 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+      }
+      @keyframes popScale {
+        0% { transform: scale(0); opacity: 0; }
+        70% { transform: scale(1.15); opacity: 0.9; }
+        100% { transform: scale(1); opacity: 1; }
+      }
+
+      /* Jewel glimmer and sparkle styles for emoji buttons */
+      .gem-btn {
+        position: relative;
+        overflow: hidden;
+        border-radius: 14px;
+        background: rgba(255, 255, 255, 0.04);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+        box-shadow: inset 0 1px 1.5px rgba(255, 255, 255, 0.1), 0 2px 4px rgba(0, 0, 0, 0.12);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        height: 46px;
+        font-size: 1.4rem;
+        cursor: pointer;
+      }
+      .gem-btn:hover {
+        background: rgba(255, 255, 255, 0.12);
+        border-color: rgba(255, 255, 255, 0.22);
+        transform: translateY(-2px);
+        box-shadow: 0 8px 16px rgba(255, 255, 255, 0.05), 
+                    inset 0 1px 2px rgba(255, 255, 255, 0.15);
+      }
+      .gem-btn-active {
+        background: linear-gradient(135deg, rgba(255, 255, 255, 0.18) 0%, rgba(255, 255, 255, 0.05) 100%) !important;
+        border-color: rgba(251, 191, 36, 0.8) !important; /* soft warm gold glow */
+        box-shadow: 0 0 25px rgba(251, 191, 36, 0.4), 
+                    0 0 8px rgba(255, 255, 255, 0.25), 
+                    inset 0 1.5px 3px rgba(255, 255, 255, 0.5) !important;
+        animation: floatGem 2.5s ease-in-out infinite;
+        transform: scale(1.16) translateY(-2px) !important;
+        text-shadow: 0 0 8px rgba(255, 255, 255, 0.7);
+      }
+      @keyframes floatGem {
+        0%, 100% { transform: scale(1.16) translateY(-2px); }
+        50% { transform: scale(1.16) translateY(-5px); }
+      }
+
+      /* Shimmer shine effect across active buttons */
+      .gem-btn::before {
+        content: '';
+        position: absolute;
+        top: -50%;
+        left: -50%;
+        width: 200%;
+        height: 200%;
+        background: linear-gradient(
+          45deg,
+          transparent 45%,
+          rgba(255, 255, 255, 0.35) 50%,
+          transparent 55%
+        );
+        transform: rotate(-45deg);
+        transition: none;
+        opacity: 0;
+        pointer-events: none;
+      }
+      .gem-btn:hover::before {
+        animation: shineGem 1.6s ease-in-out infinite;
+        opacity: 1;
+      }
+      @keyframes shineGem {
+        0% { transform: translate(-30%, -30%) rotate(-45deg); }
+        100% { transform: translate(30%, 30%) rotate(-45deg); }
+      }
+
+      /* Custom emotional gradient buttons */
+      .btn-cotton-candy {
+        background: linear-gradient(135deg, #ffd4f3 0%, #ccdcfc 100%);
+        color: #1a153b;
+        font-weight: 700;
+        box-shadow: 0 4px 18px rgba(253, 164, 203, 0.35), inset 0 1px 2px rgba(255, 255, 255, 0.5);
+        transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        text-shadow: 0 0.5px 1px rgba(255,255,255,0.7);
+      }
+      .btn-cotton-candy:hover:not(:disabled) {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 24px rgba(253, 164, 203, 0.5), inset 0 1px 2px rgba(255, 255, 255, 0.6);
+      }
+      .btn-cotton-candy:active:not(:disabled) {
+        transform: translateY(0);
+      }
+
+      /* Custom scrollbar */
+      ::-webkit-scrollbar {
+        width: 6px;
+      }
+      ::-webkit-scrollbar-track {
+        background: rgba(255, 255, 255, 0.02);
+        border-radius: 10px;
+      }
+      ::-webkit-scrollbar-thumb {
+        background: rgba(255, 255, 255, 0.12);
+        border-radius: 10px;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background: rgba(255, 255, 255, 0.25);
+      }
+    </style>
+  </head>
+  <body class="relative min-h-screen text-slate-100 overflow-x-hidden flex flex-col items-center justify-start p-4 md:p-6 pb-12">
+    <!-- Beautiful Sky Layer Overlays -->
+    <div id="sky-overlay-1" class="sky-layer opacity-100" style="background: linear-gradient(135deg, #02040d 0%, #050a24 50%, #0d1236 100%);"></div>
+    <div id="sky-overlay-2" class="sky-layer opacity-0"></div>
+
+    <!-- Floating Transparent Clouds -->
+    <div id="cloud-container" class="absolute inset-0 pointer-events-none overflow-hidden z-0 select-none transition-opacity duration-[8000ms]" style="opacity: 0.15;">
+      <div class="absolute cloud" style="top: 10%; left: -250px; width: 140px; height: auto; opacity: 0.7; animation: floatCloud 50s linear infinite; animation-delay: 0s;">
+        <svg viewBox="0 0 100 60" fill="rgba(255,255,255,0.85)" xmlns="http://www.w3.org/2000/svg">
+          <path d="M 12 40 A 12 12 0 0 1 24 28 A 15 15 0 0 1 54 24 A 13 13 0 0 1 76 28 A 12 12 0 0 1 88 40 A 10 10 0 0 1 78 50 L 22 50 A 10 10 0 0 1 12 40 Z" />
+        </svg>
+      </div>
+      <div class="absolute cloud" style="top: 25%; left: -250px; width: 220px; height: auto; opacity: 0.5; animation: floatCloud 75s linear infinite; animation-delay: -20s;">
+        <svg viewBox="0 0 100 60" fill="rgba(255,255,255,0.75)" xmlns="http://www.w3.org/2000/svg">
+          <path d="M 12 40 A 12 12 0 0 1 24 28 A 15 15 0 0 1 54 24 A 13 13 0 0 1 76 28 A 12 12 0 0 1 88 40 A 10 10 0 0 1 78 50 L 22 50 A 10 10 0 0 1 12 40 Z" />
+        </svg>
+      </div>
+      <div class="absolute cloud" style="top: 45%; left: -250px; width: 170px; height: auto; opacity: 0.6; animation: floatCloud 40s linear infinite; animation-delay: -8s;">
+        <svg viewBox="0 0 100 60" fill="rgba(255,255,255,0.65)" xmlns="http://www.w3.org/2000/svg">
+          <path d="M 12 40 A 12 12 0 0 1 24 28 A 15 15 0 0 1 54 24 A 13 13 0 0 1 76 28 A 12 12 0 0 1 88 40 A 10 10 0 0 1 78 50 L 22 50 A 10 10 0 0 1 12 40 Z" />
+        </svg>
+      </div>
+    </div>
+
+    <!-- Starfield Background -->
+    <div id="star-container" class="absolute inset-0 pointer-events-none overflow-hidden z-0 transition-opacity duration-[8000ms]"></div>
+
+    <!-- Tab Buttons at the very top -->
+    <div class="relative z-20 flex items-center bg-white/4 border border-white/8 rounded-2xl p-1.5 mb-6 max-w-[340px] w-full select-none shadow-xl backdrop-blur-md">
+      <button 
+        id="tab-write-btn"
+        onclick="switchTab('write')"
+        class="flex-1 py-2 px-4 rounded-xl text-xs font-bold text-center cursor-pointer transition-all duration-300 btn-cotton-candy shadow-md"
+      >
+        💌 편지 쓰기
+      </button>
+      <button 
+        id="tab-board-btn"
+        onclick="switchTab('board')"
+        class="flex-1 py-2 px-4 rounded-xl text-xs font-semibold text-center text-slate-300 cursor-pointer transition-all duration-300 hover:text-white"
+      >
+        ✨ 은하수 게시판
+      </button>
+    </div>
+
+    <!-- Container Card -->
+    <div id="main-card-container" class="relative w-full max-w-[400px] bg-slate-950/45 backdrop-blur-[24px] border border-white/14 rounded-[26px] p-6 shadow-[0_20px_50px_rgba(168,111,244,0.12),_inset_0_1px_2px_rgba(255,255,255,0.15)] z-10 transition-all duration-300">
+      
+      <!-- [TAB 1] Letter Form Area -->
+      <div id="tab-write-content" class="block space-y-5">
+        <form id="letter-form" class="space-y-5" onsubmit="handleSubmit(event)">
+          <!-- Header -->
+          <div class="text-center space-y-1.5 pb-2 border-b border-white/8">
+            <div class="text-4xl select-none filter drop-shadow-[0_0_8px_rgba(255,255,255,0.7)]" id="heading-emoji">✨</div>
+            <h1 class="text-xl font-bold tracking-tight text-white">선생님께 편지 보내기</h1>
+            <p class="text-xs text-slate-300">따뜻한 말 한마디가 선생님께 큰 힘이 됩니다. 💖</p>
+          </div>
+
+          <!-- Name Input -->
+          <div class="space-y-1">
+            <label for="student-name" class="block text-xs font-semibold text-slate-300">이름 (선택)</label>
+            <input 
+              type="text" 
+              id="student-name" 
+              maxlength="20"
+              placeholder="이름을 입력하세요 (비워두면 익명)"
+              class="w-full bg-white/4 border border-white/8 rounded-xl px-3.5 py-2.5 text-sm text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-pink-300/40 focus:border-pink-300/50 transition-all shadow-inner"
+            />
+          </div>
+
+          <!-- Content Textarea -->
+          <div class="space-y-1">
+            <label for="letter-content" class="block text-xs font-semibold text-slate-300">편지 내용 (필수)</label>
+            <textarea 
+              id="letter-content" 
+              required
+              placeholder="선생님께 감사한 마음이나 조심스레 전하고 싶었던 이야기를 자유롭게 적어주세요.&#10;전송된 편지는 교실 전광판 화면에 예쁘게 피어납니다. 🌸"
+              class="w-full min-h-[130px] bg-white/4 border border-white/8 rounded-xl px-3.5 py-2.5 text-sm text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-pink-300/40 focus:border-pink-300/50 transition-all resize-none shadow-inner leading-relaxed"
+              oninput="checkForm()"
+            ></textarea>
+          </div>
+
+          <!-- Emoji Selector -->
+          <div class="space-y-1.5">
+            <label class="block text-xs font-semibold text-slate-300">빛나는 이모지 선택 (보석처럼 반짝여요 ✨)</label>
+            <div class="grid grid-cols-5 gap-2" id="emoji-group">
+              <!-- Emojis will be rendered here dynamically -->
+            </div>
+            <input type="hidden" id="selected-emoji" value="✨">
+          </div>
+
+          <!-- Submit Button -->
+          <button 
+            type="submit" 
+            id="submit-btn"
+            disabled
+            class="w-full py-3.5 px-4 rounded-xl text-sm transition-all duration-200 select-none cursor-pointer disabled:cursor-not-allowed disabled:opacity-40 btn-cotton-candy"
+          >
+            💌 선생님께 보내기
+          </button>
+        </form>
+
+        <!-- Success Screen (Initially Hidden) -->
+        <div id="success-screen" class="hidden text-center py-8 px-2 space-y-6">
+          <div class="flex justify-center select-none">
+            <div id="success-emoji" class="text-6xl emoji-pop filter drop-shadow-[0_0_15px_rgba(255,215,0,0.7)]">✨</div>
+          </div>
+          <div class="space-y-2">
+            <h2 class="text-2xl font-bold text-white tracking-tight">편지가 전달됐어요!</h2>
+            <p class="text-sm text-slate-300 leading-relaxed">
+              전광판 화면에 편지가 띄워졌습니다.<br>
+              소중한 마음을 전해줘서 고마워요. ⭐
+            </p>
+          </div>
+          <div>
+            <button 
+              type="button" 
+              onclick="resetForm()" 
+              class="px-6 py-2.5 bg-white/10 hover:bg-white/18 border border-white/15 rounded-xl text-xs font-medium tracking-tight text-white transition-all duration-200 cursor-pointer active:scale-95 shadow-md hover:border-pink-300/40"
+            >
+              또 다른 편지 쓰기
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- [TAB 2] Milky Way Board Section (Initially Hidden) -->
+      <div id="tab-board-content" class="hidden space-y-4">
+        <div class="text-center pb-2 border-b border-white/10">
+          <h2 class="text-lg font-bold text-white flex items-center justify-center gap-1.5">
+            <span>✨</span> 은하수 편지 보관함
+          </h2>
+          <p class="text-[11px] text-slate-400 mt-1">선생님의 따뜻한 답글과 친구들의 소중한 편지들</p>
+        </div>
+
+        <!-- Feed List container -->
+        <div id="board-feed" class="space-y-5 max-h-[500px] overflow-y-auto pr-1">
+          <div class="text-center py-12 text-slate-500 text-xs">편지 목록을 우주에서 불러오는 중... 🌌</div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Firebase v10 CDN Modules -->
+    <script type="module">
+      import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+      import { getDatabase, ref, push, serverTimestamp, onValue, runTransaction } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+
+      // Firebase Configuration
+      const firebaseConfig = {
+        apiKey: "AIzaSyB-OCXxqYJ36d1_Xh5mbxuM7_hMKZQb_eA",
+        authDomain: "letter-79fa9.firebaseapp.com",
+        databaseURL: "https://letter-79fa9-default-rtdb.firebaseio.com",
+        projectId: "letter-79fa9",
+        storageBucket: "letter-79fa9.firebasestorage.app",
+        messagingSenderId: "80286170998",
+        appId: "1:80286170998:web:93e1c8d3a238e7ec848457",
+        measurementId: "G-9EMFPY4PEE"
+      };
+
+      // Initialize Firebase
+      const app = initializeApp(firebaseConfig);
+      const db = getDatabase(app);
+
+      // Starfield generator (80 stars)
+      const starContainer = document.getElementById('star-container');
+      for (let i = 0; i < 80; i++) {
+        const star = document.createElement('div');
+        star.className = 'star';
+        star.style.left = `${Math.random() * 100}%`;
+        star.style.top = `${Math.random() * 100}%`;
+        star.style.animationDuration = `${1.5 + Math.random() * 3}s`;
+        star.style.animationDelay = `${Math.random() * 3}s`;
+        starContainer.appendChild(star);
+      }
+
+      // Sky Background State transition engine with ultra-soft, lovely and sentimental watercolor gradients
+      const skyStates = [
+        {
+          gradient: 'linear-gradient(135deg, #030510 0%, #0a1133 50%, #151b4d 100%)', // Deep Night
+          starOpacity: '1.0',
+          cloudOpacity: '0.15'
+        },
+        {
+          gradient: 'linear-gradient(135deg, #0f122e 0%, #2f1d52 35%, #66225b 65%, #a82e5b 85%, #fca5a5 100%)', // Soft Sentimental Dawn
+          starOpacity: '0.5',
+          cloudOpacity: '0.35'
+        },
+        {
+          gradient: 'linear-gradient(135deg, #0e2448 0%, #1d4370 45%, #4b749f 75%, #a1c4fd 100%)', // Pale Ethereal Day
+          starOpacity: '0.0',
+          cloudOpacity: '0.45'
+        },
+        {
+          gradient: 'linear-gradient(135deg, #060515 0%, #181135 30%, #431f4f 65%, #7c3f58 85%, #e28f6b 100%)', // Gentle Dreamy Sunset
+          starOpacity: '0.35',
+          cloudOpacity: '0.4'
+        }
+      ];
+
+      let currentSkyIdx = 1; // Start with state 1 next
+      let activeLayer = 1;
+
+      function changeSkyState() {
+        const state = skyStates[currentSkyIdx];
+        const layer1 = document.getElementById('sky-overlay-1');
+        const layer2 = document.getElementById('sky-overlay-2');
+        const starNode = document.getElementById('star-container');
+        const cloudContainer = document.getElementById('cloud-container');
+
+        if (activeLayer === 1) {
+          if (layer2) {
+            layer2.style.background = state.gradient;
+            layer2.style.opacity = '1';
+          }
+          if (layer1) {
+            layer1.style.opacity = '0';
+          }
+          activeLayer = 2;
+        } else {
+          if (layer1) {
+            layer1.style.background = state.gradient;
+            layer1.style.opacity = '1';
+          }
+          if (layer2) {
+            layer2.style.opacity = '0';
+          }
+          activeLayer = 1;
+        }
+
+        if (starNode) {
+          starNode.style.opacity = state.starOpacity;
+        }
+        if (cloudContainer) {
+          cloudContainer.style.opacity = state.cloudOpacity;
+        }
+
+        currentSkyIdx = (currentSkyIdx + 1) % skyStates.length;
+      }
+
+      // Transition every 15 seconds to make a full 1-minute cycle for 4 states
+      setInterval(changeSkyState, 15000);
+
+      // Sentimental, sweet, and comforting selection of 20 premium emojis
+      const emojis = [
+        '✨', '🌸', '🔮', '🧸', '🍭', 
+        '🎀', '💌', '🌟', '🌙', '🧁', 
+        '🎈', '🫧', '❤️', '🎨', '🍀', 
+        '🎓', '📚', '✏️', '🩹', '🌌'
+      ];
+      const emojiGroup = document.getElementById('emoji-group');
+      const selectedEmojiInput = document.getElementById('selected-emoji');
+      const headingEmoji = document.getElementById('heading-emoji');
+
+      function buildEmojiSelectors() {
+        if (!emojiGroup) return;
+        emojiGroup.innerHTML = '';
+        emojis.forEach((emoji, index) => {
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = `gem-btn ${index === 0 ? 'gem-btn-active' : ''}`;
+          btn.textContent = emoji;
+          btn.title = emoji;
+          btn.addEventListener('click', () => {
+            // Reset all siblings to plain gem style
+            Array.from(emojiGroup.children).forEach(child => {
+              child.className = 'gem-btn';
+            });
+            // Apply floating sparkling active highlight class to clicked button
+            btn.className = 'gem-btn gem-btn-active';
+            selectedEmojiInput.value = emoji;
+            headingEmoji.textContent = emoji;
+          });
+          emojiGroup.appendChild(btn);
+        });
+      }
+
+      buildEmojiSelectors();
+
+      // Check form validity & enable button
+      window.checkForm = function() {
+        const contentText = document.getElementById('letter-content');
+        if (!contentText) return;
+        const content = contentText.value.trim();
+        const btn = document.getElementById('submit-btn');
+        if (!btn) return;
+        if (content.length > 0) {
+          btn.removeAttribute('disabled');
+        } else {
+          btn.setAttribute('disabled', 'true');
+        }
+      }
+
+      // Handle Submit Logic
+      window.handleSubmit = async function(event) {
+        event.preventDefault();
+        const contentArea = document.getElementById('letter-content');
+        const nameInput = document.getElementById('student-name');
+        const submitBtn = document.getElementById('submit-btn');
+
+        const message = contentArea.value.trim();
+        const rawName = nameInput.value.trim();
+        const name = rawName || '익명';
+        const emoji = selectedEmojiInput.value;
+
+        if (!message) return;
+
+        // Transition button state
+        submitBtn.setAttribute('disabled', 'true');
+        submitBtn.textContent = '보내는 중...';
+
+        try {
+          // Push entry to firebase Realtime Database
+          await push(ref(db, 'letters'), {
+            name,
+            message,
+            emoji,
+            timestamp: serverTimestamp(),
+            visible: true,
+            likes: 0
+          });
+
+          // Transition screen showing success panel
+          document.getElementById('letter-form').classList.add('hidden');
+          document.getElementById('success-screen').classList.remove('hidden');
+          
+          // Trigger pop animation
+          const successEmojiNode = document.getElementById('success-emoji');
+          successEmojiNode.textContent = emoji; // match sent emoji!
+          successEmojiNode.classList.remove('emoji-pop');
+          void successEmojiNode.offsetWidth; // reflow to trigger animation restart
+          successEmojiNode.classList.add('emoji-pop');
+          
+        } catch (error) {
+          console.error("Firebase submit error: ", error);
+          alert("전송 실패했어요. 다시 시도해주세요.");
+          submitBtn.removeAttribute('disabled');
+          submitBtn.textContent = '💌 선생님께 보내기';
+        }
+      }
+
+      // Reset Form returning to normal screen
+      window.resetForm = function() {
+        // Clear field values
+        document.getElementById('letter-content').value = '';
+        document.getElementById('student-name').value = '';
+        selectedEmojiInput.value = '✨';
+        headingEmoji.textContent = '✨';
+        
+        // Return selector styles
+        buildEmojiSelectors();
+        checkForm();
+
+        // Reveal writing panel again
+        document.getElementById('success-screen').classList.add('hidden');
+        document.getElementById('letter-form').classList.remove('hidden');
+      }
+
+      // Submit button hover enhancement animations
+      const sBtn = document.getElementById('submit-btn');
+      if (sBtn) {
+        sBtn.addEventListener('mouseenter', () => {
+          if (!sBtn.disabled) {
+            sBtn.style.transform = 'translateY(-2px) scale(1.01)';
+          }
+        });
+        sBtn.addEventListener('mouseleave', () => {
+          if (!sBtn.disabled) {
+            sBtn.style.transform = 'translateY(0) scale(1)';
+          }
+        });
+      }
+
+      // --- Tab Swapping Logic ---
+      window.switchTab = function(tabName) {
+        const writeBtn = document.getElementById('tab-write-btn');
+        const boardBtn = document.getElementById('tab-board-btn');
+        const writeContent = document.getElementById('tab-write-content');
+        const boardContent = document.getElementById('tab-board-content');
+        const mainCard = document.getElementById('main-card-container');
+
+        if (tabName === 'write') {
+          // Adjust class toggle styles with soft candy layout
+          writeBtn.className = "flex-1 py-2 px-4 rounded-xl text-xs font-bold text-center cursor-pointer transition-all duration-300 btn-cotton-candy shadow-md";
+          boardBtn.className = "flex-1 py-2 px-4 rounded-xl text-xs font-semibold text-center text-slate-300 cursor-pointer transition-all duration-300 hover:text-white";
+          
+          writeContent.classList.remove('hidden');
+          boardContent.classList.add('hidden');
+          mainCard.style.maxWidth = '400px';
+        } else {
+          writeBtn.className = "flex-1 py-2 px-4 rounded-xl text-xs font-semibold text-center text-slate-300 cursor-pointer transition-all duration-300 hover:text-white";
+          boardBtn.className = "flex-1 py-2 px-4 rounded-xl text-xs font-bold text-center cursor-pointer transition-all duration-300 btn-cotton-candy shadow-md";
+          
+          writeContent.classList.add('hidden');
+          boardContent.classList.remove('hidden');
+          mainCard.style.maxWidth = '540px'; // Expand card width for comfortable board layout
+          initBoardSync();
+        }
+      }
+
+      // --- Time Ago formula ---
+      function formatTimeAgo(timeVal) {
+        if (!timeVal) return '방금 전';
+        const diffMs = Date.now() - timeVal;
+        const diffSec = Math.floor(diffMs / 1000);
+        if (diffSec < 60) return '방금 전';
+        const diffMin = Math.floor(diffSec / 60);
+        if (diffMin < 60) return `${diffMin}분 전`;
+        const diffHr = Math.floor(diffMin / 60);
+        if (diffHr < 24) return `${diffHr}시간 전`;
+        const diffDay = Math.floor(diffHr / 24);
+        return `${diffDay}일 전`;
+      }
+
+      // --- Board Synchronization ---
+      let boardSubscription = null;
+      function initBoardSync() {
+        if (boardSubscription) return; // already listening
+
+        const boardFeed = document.getElementById('board-feed');
+        const lettersRef = ref(db, 'letters');
+
+        boardSubscription = onValue(lettersRef, (snapshot) => {
+          boardFeed.innerHTML = '';
+          const data = snapshot.val();
+          const list = [];
+
+          if (data) {
+            Object.keys(data).forEach(key => {
+              list.push({ key, ...data[key] });
+            });
+          }
+
+          // Filter only visible === true
+          const visibleList = list.filter(item => item.visible !== false);
+
+          // Custom sort: 선생님의 답장(reply)이 최우선 상위 노출되야 함.
+          // 그 후에는 최근 날짜순(timestamp가 최신인 것) 내림차순 정렬
+          visibleList.sort((a, b) => {
+            const aHasReply = (a.reply && a.reply.trim().length > 0) ? 1 : 0;
+            const bHasReply = (b.reply && b.reply.trim().length > 0) ? 1 : 0;
+
+            if (aHasReply !== bHasReply) {
+              return bHasReply - aHasReply; // hasReply를 가진 카드를 최상단(1)으로 배치
+            }
+
+            // 그렇지 않으면 최근 타임스탬프 순서
+            const aTime = typeof a.timestamp === 'number' ? a.timestamp : 0;
+            const bTime = typeof b.timestamp === 'number' ? b.timestamp : 0;
+            return bTime - aTime;
+          });
+
+          if (visibleList.length === 0) {
+            boardFeed.innerHTML = `
+              <div class="text-center py-16 text-slate-500">
+                <span class="text-3xl block mb-2 opacity-50">🌌</span>
+                아직 도착한 편지가 없어요. 첫 편지를 전해보세요!
+              </div>`;
+            return;
+          }
+
+          visibleList.forEach(item => {
+            const key = item.key;
+            const hasReply = item.reply && item.reply.trim().length > 0;
+            
+            // Build comments list array
+            const commentList = [];
+            if (item.comments) {
+              Object.keys(item.comments).forEach(commentId => {
+                commentList.push({ commentId, ...item.comments[commentId] });
+              });
+              // Sort comments by timestamp ascending
+              commentList.sort((a,b) => (a.timestamp || 0) - (b.timestamp || 0));
+            }
+
+            const card = document.createElement('div');
+            // If the teacher has replied, add a beautiful gold border highlight
+            card.className = `p-4.5 rounded-2xl bg-white/4 border transition-all duration-300 flex flex-col gap-3.5 
+              ${hasReply 
+                ? 'border-amber-400/40 shadow-lg shadow-amber-400/5 relative overflow-hidden' 
+                : 'border-white/8'
+              }`;
+
+            if (hasReply) {
+              // Add a shiny accent strip for replies
+              const badge = document.createElement('div');
+              badge.className = "absolute top-0 right-0 bg-gradient-to-l from-amber-500 to-amber-700 text-[9px] font-black text-white px-2.5 py-1 rounded-bl-xl tracking-wider select-none";
+              badge.textContent = "👩‍🏫 선생님 답장 배달됨";
+              card.appendChild(badge);
+            }
+
+            // 1. Student card main text element
+            const headerSection = `
+              <div class="flex items-center gap-2.5">
+                <span class="text-2xl shrink-0 select-none">${item.emoji || '✏️'}</span>
+                <div class="min-w-0 flex-1">
+                  <div class="flex items-center gap-1.5 flex-wrap">
+                    <span class="text-xs font-bold text-white tracking-tight">${item.name}의 이야기</span>
+                    <span class="text-[9px] text-slate-400 font-medium">${formatTimeAgo(item.timestamp)}</span>
+                  </div>
+                  <p class="text-xs text-white/90 leading-relaxed break-words whitespace-pre-wrap mt-1 pr-1">${item.message}</p>
+                </div>
+              </div>
+            `;
+
+            // 2. Reply element block (if reply exists)
+            const replySection = hasReply ? `
+              <div class="bg-amber-400/10 border border-amber-400/20 rounded-xl p-3.5 space-y-1.5 text-xs">
+                <div class="flex items-center gap-1 text-amber-300 font-extrabold select-none">
+                  <span>✨</span>
+                  <span>선생님의 답장</span>
+                </div>
+                <p class="text-slate-100 leading-relaxed font-medium break-words whitespace-pre-wrap">${item.reply}</p>
+              </div>
+            ` : '';
+
+            // 3. Footer row: Likes + Comments Toggle Buttons
+            const footerSection = `
+              <div class="flex items-center gap-3 pt-2 text-xs border-t border-white/5">
+                <!-- Like button -->
+                <button 
+                  onclick="triggerLike('${key}')"
+                  class="flex items-center gap-1.5 px-3 py-1.5 bg-white/4 hover:bg-white/10 active:scale-95 border border-white/5 hover:border-white/10 rounded-lg text-amber-300 transition-all cursor-pointer font-bold select-none"
+                >
+                  <span class="text-sm">⭐</span>
+                  별빛 보내기 <span class="text-amber-400">${item.likes || 0}</span>
+                </button>
+
+                <!-- Comment expand toggle -->
+                <button 
+                  onclick="toggleCommentsSection('${key}')"
+                  class="flex items-center gap-1.5 px-3 py-1.5 bg-white/4 hover:bg-white/10 border border-white/5 rounded-lg text-slate-300 transition-all cursor-pointer select-none"
+                >
+                  <span>💬</span>
+                  공감댓글 <span class="text-slate-200 font-bold ml-0.5">${commentList.length}</span>
+                </button>
+              </div>
+            `;
+
+            // 4. Expandable Comments Node thread
+            const commentsSectionDiv = `
+              <div id="comments-box-${key}" class="hidden space-y-3.5 pt-3 border-t border-white/5">
+                <!-- Comments list inside -->
+                <div class="space-y-2 max-h-[160px] overflow-y-auto pr-1">
+                  ${commentList.length === 0 
+                    ? `<p class="text-[10px] text-slate-500 text-center py-2">가장 먼저 친구 편지에 공감 한마디를 적어보세요! 🙂</p>`
+                    : commentList.map(cmt => `
+                      <div class="bg-white/3 border border-white/4 rounded-lg p-2 space-y-0.5 leading-relaxed">
+                        <div class="flex items-center justify-between text-[9px] font-bold text-slate-400">
+                          <span>${cmt.writer || '익명'}</span>
+                          <span>${formatTimeAgo(cmt.timestamp)}</span>
+                        </div>
+                        <p class="text-[11px] text-slate-200 break-all">${cmt.text}</p>
+                      </div>
+                    `).join('')
+                  }
+                </div>
+
+                <!-- Input form inside -->
+                <div class="flex flex-col gap-2 bg-white/2 border border-white/5 p-2 rounded-xl">
+                  <div class="flex gap-2">
+                    <input 
+                      type="text" 
+                      id="comment-writer-${key}"
+                      maxlength="10"
+                      placeholder="닉네임 (기본: 익명)" 
+                      class="bg-white/5 border border-white/8 rounded-lg px-2 py-1 text-[10px] text-white placeholder-slate-500 w-[110px] focus:outline-none focus:ring-1 focus:ring-blue-500/50"
+                    />
+                    <input 
+                      type="text" 
+                      id="comment-text-${key}"
+                      maxlength="100"
+                      required
+                      placeholder="공감 한마디 적어보기..." 
+                      class="flex-1 bg-white/5 border border-white/8 rounded-lg px-2.5 py-1 text-[10px] text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-blue-500/50"
+                      onkeydown="if(event.key === 'Enter') submitComment('${key}')"
+                    />
+                    <button 
+                      onclick="submitComment('${key}')"
+                      class="bg-blue-500 hover:bg-blue-600 px-3 py-1 rounded-lg text-[10px] font-extrabold text-white cursor-pointer active:scale-95 transition-all w-12 text-center"
+                    >
+                      등록
+                    </button>
+                  </div>
+                </div>
+              </div>
+            `;
+
+            // Append blocks to container card
+            const innerWrap = document.createElement('div');
+            innerWrap.className = 'space-y-3.5';
+            innerWrap.innerHTML = headerSection + replySection + footerSection + commentsSectionDiv;
+            card.appendChild(innerWrap);
+
+            boardFeed.appendChild(card);
+          });
+        });
+      }
+
+      // --- Interaction handlers inside Feed ---
+      window.triggerLike = async function(key) {
+        try {
+          await runTransaction(ref(db, `letters/${key}/likes`), (currentLikes) => {
+            return (currentLikes || 0) + 1;
+          });
+        } catch (error) {
+          console.error("Failed liking letter: ", error);
+        }
+      }
+
+      window.toggleCommentsSection = function(key) {
+        const box = document.getElementById(`comments-box-${key}`);
+        if (!box) return;
+        if (box.classList.contains('hidden')) {
+          box.classList.remove('hidden');
+        } else {
+          box.classList.add('hidden');
+        }
+      }
+
+      window.submitComment = async function(key) {
+        const writerField = document.getElementById(`comment-writer-${key}`);
+        const textField = document.getElementById(`comment-text-${key}`);
+
+        const text = textField.value.trim();
+        const writer = writerField.value.trim() || '익명';
+
+        if (!text) return;
+
+        textField.value = ''; // clean input instantly
+
+        try {
+          await push(ref(db, `letters/${key}/comments`), {
+            writer,
+            text,
+            timestamp: serverTimestamp()
+          });
+        } catch (e) {
+          console.error("Comment submission error: ", e);
+          alert("댓글 전송 중 오류가 발생했습니다.");
+        }
+      }
+
+    </script>
+  </body>
+</html>

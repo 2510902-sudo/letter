@@ -1,0 +1,6 @@
+{
+  "name": "선생님께 보내는 편지",
+  "description": "선생님께 고마운 마음을 담아 편지를 전하고 교실 은하수 전광판 화면에 띄우는 편지 배달 서비스입니다.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

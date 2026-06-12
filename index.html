@@ -1,0 +1,848 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>교실 편지 전광판 📺</title>
+    <!-- Tailwind CSS v4 Browser CDN -->
+    <script src="https://unpkg.com/@tailwindcss/browser@4"></script>
+    <!-- qrcode.js CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap');
+      
+      body {
+        font-family: 'Noto Sans KR', sans-serif;
+        background-color: #02040d;
+      }
+
+      /* Multi-layered dynamic skies */
+      .sky-layer {
+        position: absolute;
+        inset: 0;
+        transition: opacity 8000ms cubic-bezier(0.4, 0, 0.2, 1);
+        pointer-events: none;
+        z-index: 0;
+      }
+      
+      /* Clouds and floating effects */
+      .cloud {
+        position: absolute;
+        pointer-events: none;
+        filter: blur(5px);
+        transform: translateZ(0); /* Hardware accelerated */
+      }
+      @keyframes floatCloud {
+        from { transform: translateX(-300px); }
+        to { transform: translateX(calc(100vw + 300px)); }
+      }
+
+      /* Card Entry Animation */
+      @keyframes cardIn {
+        from { transform: scale(0.85) translateY(12px); opacity: 0; }
+        to { transform: scale(1) translateY(0); opacity: 1; }
+      }
+
+      /* Base Float motion for drifting card vibe */
+      @keyframes float {
+        0% { transform: translateY(0); }
+        50% { transform: translateY(-8px); }
+        100% { transform: translateY(0); }
+      }
+
+      /* Sidebar item slide entrance */
+      @keyframes fadeSlideIn {
+        from { transform: translateY(8px); opacity: 0; }
+        to { transform: translateY(0); opacity: 1; }
+      }
+      .animate-fadeSlideIn {
+        animation: fadeSlideIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+      }
+
+      /* Glassy Gem/Jewel Shard Particles */
+      .gem-shard {
+        position: absolute;
+        pointer-events: none;
+        z-index: 99;
+        background: var(--shard-bg, rgba(255, 255, 255, 0.35));
+        border: 1px solid var(--shard-border, rgba(255, 255, 255, 0.6));
+        backdrop-filter: blur(1px);
+        -webkit-backdrop-filter: blur(1px);
+        clip-path: polygon(var(--clip-points, 50% 0%, 0% 100%, 100% 100%));
+        filter: drop-shadow(0 0 6px var(--shard-glow, rgba(255, 255, 255, 0.5)));
+        will-change: transform, opacity;
+      }
+    </style>
+  </head>
+  <body class="relative h-screen w-screen overflow-hidden text-slate-100 flex">
+    <!-- Beautiful Sky Layer Overlays -->
+    <div id="sky-overlay-1" class="sky-layer opacity-100" style="background: linear-gradient(135deg, #02040d 0%, #050a24 50%, #0d1236 100%);"></div>
+    <div id="sky-overlay-2" class="sky-layer opacity-0"></div>
+
+    <!-- Floating Transparent Clouds -->
+    <div id="cloud-container" class="absolute inset-0 pointer-events-none overflow-hidden z-0 select-none transition-opacity duration-[8000ms]" style="opacity: 0.15;">
+      <div class="absolute cloud" style="top: 15%; left: -250px; width: 140px; height: auto; opacity: 0.7; animation: floatCloud 50s linear infinite; animation-delay: 0s;">
+        <svg viewBox="0 0 100 60" fill="rgba(255,255,255,0.85)" xmlns="http://www.w3.org/2000/svg">
+          <path d="M 12 40 A 12 12 0 0 1 24 28 A 15 15 0 0 1 54 24 A 13 13 0 0 1 76 28 A 12 12 0 0 1 88 40 A 10 10 0 0 1 78 50 L 22 50 A 10 10 0 0 1 12 40 Z" />
+        </svg>
+      </div>
+      <div class="absolute cloud" style="top: 30%; left: -250px; width: 220px; height: auto; opacity: 0.5; animation: floatCloud 75s linear infinite; animation-delay: -20s;">
+        <svg viewBox="0 0 100 60" fill="rgba(255,255,255,0.75)" xmlns="http://www.w3.org/2000/svg">
+          <path d="M 12 40 A 12 12 0 0 1 24 28 A 15 15 0 0 1 54 24 A 13 13 0 0 1 76 28 A 12 12 0 0 1 88 40 A 10 10 0 0 1 78 50 L 22 50 A 10 10 0 0 1 12 40 Z" />
+        </svg>
+      </div>
+      <div class="absolute cloud" style="top: 50%; left: -250px; width: 170px; height: auto; opacity: 0.6; animation: floatCloud 40s linear infinite; animation-delay: -8s;">
+        <svg viewBox="0 0 100 60" fill="rgba(255,255,255,0.65)" xmlns="http://www.w3.org/2000/svg">
+          <path d="M 12 40 A 12 12 0 0 1 24 28 A 15 15 0 0 1 54 24 A 13 13 0 0 1 76 28 A 12 12 0 0 1 88 40 A 10 10 0 0 1 78 50 L 22 50 A 10 10 0 0 1 12 40 Z" />
+        </svg>
+      </div>
+    </div>
+
+    <!-- Starfield Background Canvas -->
+    <canvas id="starfield" class="absolute inset-0 z-0 pointer-events-none transition-opacity duration-[8000ms]"></canvas>
+
+    <!-- Side Left Panel (Letters list) -->
+    <aside class="relative z-10 w-[200px] h-full bg-white/4 border-r border-white/8 backdrop-blur-[12px] flex flex-col p-4 select-none">
+      <div class="border-b border-white/10 pb-3 mb-4 text-center">
+        <h2 class="text-sm font-bold tracking-tight text-white flex items-center justify-center gap-1.5">
+          <span>💌</span> 오늘의 편지들
+        </h2>
+      </div>
+      <!-- Scrollable list of recent messages -->
+      <div id="side-list" class="flex-1 space-y-3.5 overflow-y-auto pr-1">
+        <!-- Sidebar items populated dynamically -->
+      </div>
+    </aside>
+
+    <!-- Main Workspace (Drifting Cards Canvas) -->
+    <main id="main-content-area" class="relative flex-1 h-full z-10">
+      
+      <!-- Greeting Header -->
+      <div class="absolute left-6 top-5 select-none z-10 pointer-events-none">
+        <span class="px-2.5 py-1 rounded-full bg-pink-500/10 border border-pink-500/20 text-[10px] font-bold text-pink-300 tracking-wider">🌟 은하수 전광판</span>
+        <h1 class="text-lg font-bold text-white mt-1.5 tracking-tight">선생님 마음 전광판</h1>
+      </div>
+
+      <!-- Envelope Wing Flap Vector Node -->
+      <svg id="flying-envelope" width="80" height="60" viewBox="0 0 80 60" class="absolute pointer-events-none opacity-0 z-50 select-none" style="top: 50%; left: -120px; transform: translateY(-50%) rotate(0deg) scale(0.6);">
+        <defs>
+          <filter id="shadowFlap" x="-20%" y="-20%" width="140%" height="140%">
+            <feDropShadow dx="0" dy="4" stdDeviation="4" flood-color="#000" flood-opacity="0.3" />
+          </filter>
+        </defs>
+        <g filter="url(#shadowFlap)">
+          <!-- Backside Base envelope -->
+          <rect x="10" y="20" width="60" height="36" rx="4" fill="#6a8ff5" />
+          <!-- Left Wing: Rotation focal is (20,31) -->
+          <ellipse id="wl" cx="20" cy="31" rx="14" ry="4" fill="#3a5fd6" />
+          <!-- Right Wing: Rotation focal is (60,31) -->
+          <ellipse id="wr" cx="60" cy="31" rx="14" ry="4" fill="#3a5fd6" />
+          <!-- Fold Geometry and Heart flap -->
+          <polygon points="10,20 40,38 70,20" fill="#4d73e7" />
+          <polygon points="10,56 40,36 70,56" fill="#587deb" opacity="0.9" />
+          <polygon points="10,20 10,56 40,36" fill="#3156cc" opacity="0.75" />
+          <polygon points="70,20 70,56 40,36" fill="#3156cc" opacity="0.75" />
+          <path d="M40 37.5 c-1.2-1.5-3-1.5-4.2 0s-1.2 3.5 0 5 l4.2 4.5 4.2-4.5 c1.2-1.5 1.2-3.5 0-5 s-3-1.5-4.2 0" fill="#ff4b72" />
+        </g>
+      </svg>
+    </main>
+
+    <!-- QR Code Fixed Widget (Top-Right) -->
+    <div class="fixed right-4 top-4 z-40 select-none">
+      <div class="bg-white p-2.5 rounded-[18px] flex flex-col items-center shadow-2xl border border-white/10 w-[122px]">
+        <div id="qrcode" class="w-[100px] h-[100px] flex items-center justify-center"></div>
+        <span class="text-[9.5px] text-slate-800 font-extrabold mt-1.5">편지 쓰기 ✏️</span>
+      </div>
+    </div>
+
+    <!-- Stats Count Badge Display (Bottom-Right) -->
+    <div class="fixed right-4 bottom-5 z-40 select-none">
+      <div class="bg-white/6 backdrop-blur-[10px] border border-white/12 px-4 py-2 rounded-xl flex items-center gap-2 shadow-lg">
+        <span class="text-xs font-semibold text-slate-300">총 편지</span>
+        <span id="letter-count" class="text-sm font-black text-rose-400">0</span>
+      </div>
+    </div>
+
+    <!-- Alert / Toast Notification Bar (Bottom Center) -->
+    <div 
+      id="notification-bar" 
+      class="fixed bottom-5 left-[220px] right-[140px] z-40 text-center select-none opacity-0 pointer-events-none transition-all duration-400"
+    >
+      <div class="inline-block px-5 py-2.5 bg-gradient-to-r from-pink-400/90 to-indigo-400/90 border border-white/20 text-white rounded-xl text-xs font-extrabold shadow-2xl tracking-tight">
+        💌 새 편지가 도착했어요!
+      </div>
+    </div>
+
+    <!-- Firebase SDK v10 and Script Logic -->
+    <script type="module">
+      import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+      import { getDatabase, ref, query, orderByChild, onValue } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+
+      // Firebase Configuration
+      const firebaseConfig = {
+        apiKey: "AIzaSyB-OCXxqYJ36d1_Xh5mbxuM7_hMKZQb_eA",
+        authDomain: "letter-79fa9.firebaseapp.com",
+        databaseURL: "https://letter-79fa9-default-rtdb.firebaseio.com",
+        projectId: "letter-79fa9",
+        storageBucket: "letter-79fa9.firebasestorage.app",
+        messagingSenderId: "80286170998",
+        appId: "1:80286170998:web:93e1c8d3a238e7ec848457",
+        measurementId: "G-9EMFPY4PEE"
+      };
+
+      // Initialize Firebase
+      const app = initializeApp(firebaseConfig);
+      const db = getDatabase(app);
+
+      // --- Canvas Starfield setup & loop ---
+      const canvas = document.getElementById('starfield');
+      const ctx = canvas.getContext('2d');
+      const numNormalStars = 150;
+      const numBigStars = 12;
+      let normalStars = [];
+      let bigStars = [];
+
+      function setCanvasSize() {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+        initStars(canvas.width, canvas.height);
+      }
+
+      function initStars(width, height) {
+        normalStars = [];
+        bigStars = [];
+        for (let i = 0; i < numNormalStars; i++) {
+          normalStars.push({
+            x: Math.random() * width,
+            y: Math.random() * height,
+            size: 0.3 + Math.random() * 1.6, // 0.3px ~ 1.9px
+            phase: Math.random() * Math.PI * 2,
+            speed: 0.02 + Math.random() * 0.05
+          });
+        }
+        for (let i = 0; i < numBigStars; i++) {
+          bigStars.push({
+            x: Math.random() * width,
+            y: Math.random() * height,
+            size: 3 + Math.random() * 2,
+            phase: Math.random() * Math.PI * 2,
+            speed: 0.005 + Math.random() * 0.012
+          });
+        }
+      }
+
+      function drawStars() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        // Render 150 normal twinkling stars
+        normalStars.forEach(star => {
+          star.phase += star.speed;
+          const opacity = 0.15 + (Math.sin(star.phase) + 1) / 2 * 0.85;
+          ctx.fillStyle = `rgba(255, 255, 255, ${opacity})`;
+          ctx.beginPath();
+          ctx.arc(star.x, star.y, star.size, 0, Math.PI * 2);
+          ctx.fill();
+        });
+
+        // Render 12 massive stars with custom cross flares
+        bigStars.forEach(star => {
+          star.phase += star.speed;
+          const opacity = 0.3 + (Math.sin(star.phase) + 1) / 2 * 0.7;
+
+          // Cross flares
+          ctx.strokeStyle = `rgba(165, 180, 252, ${opacity * 0.55})`;
+          ctx.lineWidth = 0.75;
+          ctx.beginPath();
+          ctx.moveTo(star.x - star.size * 2.5, star.y);
+          ctx.lineTo(star.x + star.size * 2.5, star.y);
+          ctx.moveTo(star.x, star.y - star.size * 2.5);
+          ctx.lineTo(star.x, star.y + star.size * 2.5);
+          ctx.stroke();
+
+          // Circular Core
+          ctx.fillStyle = `rgba(255, 255, 255, ${opacity})`;
+          ctx.beginPath();
+          ctx.arc(star.x, star.y, star.size / 2, 0, Math.PI * 2);
+          ctx.fill();
+        });
+
+        requestAnimationFrame(drawStars);
+      }
+
+      window.addEventListener('resize', setCanvasSize);
+      setCanvasSize();
+      drawStars();
+
+      // Sky Background State transition engine with ultra-soft, lovely and sentimental watercolor gradients
+      const skyStates = [
+        {
+          gradient: 'linear-gradient(135deg, #030510 0%, #0a1133 50%, #151b4d 100%)', // Deep Night
+          starOpacity: '1.0',
+          cloudOpacity: '0.15'
+        },
+        {
+          gradient: 'linear-gradient(135deg, #0f122e 0%, #2f1d52 35%, #66225b 65%, #a82e5b 85%, #fca5a5 100%)', // Soft Sentimental Dawn
+          starOpacity: '0.5',
+          cloudOpacity: '0.35'
+        },
+        {
+          gradient: 'linear-gradient(135deg, #0e2448 0%, #1d4370 45%, #4b749f 75%, #a1c4fd 100%)', // Pale Ethereal Day
+          starOpacity: '0.0',
+          cloudOpacity: '0.45'
+        },
+        {
+          gradient: 'linear-gradient(135deg, #060515 0%, #181135 30%, #431f4f 65%, #7c3f58 85%, #e28f6b 100%)', // Gentle Dreamy Sunset
+          starOpacity: '0.35',
+          cloudOpacity: '0.4'
+        }
+      ];
+
+      let currentSkyIdx = 1; // Start with state 1 next
+      let activeLayer = 1;
+      let activeSkyIdx = 0; // Starts with deep night (state 0)
+
+      // Function to dynamically apply beautiful high-fidelity glowing box-shadows to represent warm lit windows
+      function applyCardGlow(card, skyIdx) {
+        const rgb = card.dataset.glowColor || '255, 255, 255';
+        const hasReply = card.dataset.glowReply === 'true';
+        
+        let glowAlpha = 0;
+        let ambientAlpha = 0.12;
+        let borderAlphaMultiplier = 1;
+
+        switch (skyIdx) {
+          case 0: // Deep Night (Max gorgeous window glow!)
+            glowAlpha = 0.95; 
+            ambientAlpha = 0.35;
+            borderAlphaMultiplier = 2.0;
+            break;
+          case 1: // Dawn (Soft misty morning glow)
+            glowAlpha = 0.35;
+            ambientAlpha = 0.18;
+            borderAlphaMultiplier = 1.15;
+            break;
+          case 2: // Bright Day (Pale, crisp daylight look with minimal glow)
+            glowAlpha = 0.08;
+            ambientAlpha = 0.08;
+            borderAlphaMultiplier = 0.8;
+            break;
+          case 3: // Sunset (Romantic twilight glow, lighting up starting)
+            glowAlpha = 0.65;
+            ambientAlpha = 0.25;
+            borderAlphaMultiplier = 1.5;
+            break;
+        }
+
+        // Beautiful multi-layered glow to simulate window lights turned on at night
+        card.style.boxShadow = `
+          0 0 35px rgba(${rgb}, ${glowAlpha * 0.42}),
+          0 0 12px rgba(${rgb}, ${glowAlpha * 0.32}),
+          inset 0 1.5px 2.5px rgba(255, 255, 255, ${0.12 + (1 - skyIdx/3) * 0.25}),
+          0 10px 25px rgba(0, 0, 0, ${ambientAlpha})
+        `;
+
+        if (hasReply) {
+          card.style.borderColor = `rgba(251, 191, 36, ${Math.min(1.0, 0.45 * borderAlphaMultiplier)})`;
+          card.style.boxShadow += `, 0 0 15px rgba(251, 191, 36, ${glowAlpha * 0.25})`;
+        } else {
+          const baseColor = rgb === '244, 63, 94' ? 'rgba(244, 63, 94, ' :
+                            rgb === '6, 182, 212' ? 'rgba(6, 182, 212, ' :
+                            rgb === '168, 85, 247' ? 'rgba(168, 85, 247, ' :
+                            rgb === '236, 72, 153' ? 'rgba(236, 72, 153, ' :
+                            'rgba(59, 130, 246, ';
+          card.style.borderColor = `${baseColor}${Math.min(0.9, 0.48 * borderAlphaMultiplier)})`;
+        }
+      }
+
+      function updateCardsGlow(skyIdx) {
+        document.querySelectorAll('.letter-card').forEach(card => {
+          applyCardGlow(card, skyIdx);
+        });
+      }
+
+      function shatterCard(card) {
+        if (!card) return;
+
+        const rect = card.getBoundingClientRect();
+        const mainArea = document.getElementById('main-content-area');
+        if (!mainArea) return;
+        const parentRect = mainArea.getBoundingClientRect();
+
+        // Calculate card center relative to main-content-area
+        const centerX = rect.left - parentRect.left + rect.width / 2;
+        const centerY = rect.top - parentRect.top + rect.height / 2;
+
+        const glowColor = card.dataset.glowColor || '255, 255, 255';
+        const shardCount = 22; // Explode 22 premium glittering shards
+
+        for (let i = 0; i < shardCount; i++) {
+          const shard = document.createElement('div');
+          shard.className = 'gem-shard';
+
+          // Beautiful randomized geometry polygons (triangles and diamonds)
+          const shapes = [
+            '50% 0%, 0% 100%, 100% 100%',             // Isosceles glass triangle
+            '0% 0%, 100% 35%, 25% 100%',              // Sharp, skewed crystal fragment
+            '50% 0%, 100% 50%, 50% 100%, 0% 50%',     // Faceted diamond gem piece
+            '15% 0%, 100% 15%, 85% 100%, 0% 85%',     // Irregular trapezoidal quad
+            '0% 0%, 100% 0%, 50% 100%',               // Downward pointing crystal point
+            '30% 0%, 100% 40%, 70% 100%, 0% 60%'      // Angled jewel chip
+          ];
+          const shape = shapes[Math.floor(Math.random() * shapes.length)];
+          const size = Math.random() * 14 + 10; // 10px to 24px wide/high
+          const alpha = Math.random() * 0.45 + 0.4; // lovely transparent glow
+
+          const bg = `rgba(${glowColor}, ${alpha})`;
+          const border = `rgba(255, 255, 255, ${Math.random() * 0.55 + 0.35})`;
+          const glow = `rgba(${glowColor}, ${Math.random() * 0.7 + 0.3})`;
+
+          shard.style.width = `${size}px`;
+          shard.style.height = `${size}px`;
+          // Position shards precisely inside the parent container centering on the exploding card
+          shard.style.left = `${centerX - size / 2}px`;
+          shard.style.top = `${centerY - size / 2}px`;
+
+          shard.style.setProperty('--clip-points', shape);
+          shard.style.setProperty('--shard-bg', bg);
+          shard.style.setProperty('--shard-border', border);
+          shard.style.setProperty('--shard-glow', glow);
+
+          // Vector velocities for realistic high-fidelity burst scattering physics
+          const angle = Math.random() * Math.PI * 2;
+          const speed = Math.random() * 160 + 80; // pixels per second
+          const vx = Math.cos(angle) * speed;
+          // Initial upward vertical boost (negative vy) to simulate a physical pop!
+          const vy = Math.sin(angle) * speed - 60;
+          const rotationSpeed = (Math.random() - 0.5) * 800; // degrees per second
+
+          mainArea.appendChild(shard);
+
+          // Kinetic step-ticker interpolation
+          const startTime = performance.now();
+          const duration = 1200 + Math.random() * 600; // 1.2s to 1.8s
+
+          function tick(time) {
+            const elapsed = time - startTime;
+            const progress = elapsed / duration;
+
+            if (progress >= 1) {
+              shard.remove();
+              return;
+            }
+
+            // Calculate x/y with soft gravity (g = 220 pixels/sec^2)
+            const curX = (vx * elapsed) / 1000;
+            const curY = (vy * elapsed) / 1000 + 0.5 * 220 * Math.pow(elapsed / 1000, 2);
+            const curRot = (rotationSpeed * elapsed) / 1000;
+
+            shard.style.transform = `translate(${curX}px, ${curY}px) rotate(${curRot}deg) scale(${1 - progress})`;
+            shard.style.opacity = `${1 - progress}`;
+
+            requestAnimationFrame(tick);
+          }
+
+          requestAnimationFrame(tick);
+        }
+      }
+
+      function changeSkyState() {
+        activeSkyIdx = currentSkyIdx;
+        const state = skyStates[currentSkyIdx];
+        const layer1 = document.getElementById('sky-overlay-1');
+        const layer2 = document.getElementById('sky-overlay-2');
+        const starNode = document.getElementById('starfield');
+        const cloudContainer = document.getElementById('cloud-container');
+
+        if (activeLayer === 1) {
+          if (layer2) {
+            layer2.style.background = state.gradient;
+            layer2.style.opacity = '1';
+          }
+          if (layer1) {
+            layer1.style.opacity = '0';
+          }
+          activeLayer = 2;
+        } else {
+          if (layer1) {
+            layer1.style.background = state.gradient;
+            layer1.style.opacity = '1';
+          }
+          if (layer2) {
+            layer2.style.opacity = '0';
+          }
+          activeLayer = 1;
+        }
+
+        if (starNode) {
+          starNode.style.opacity = state.starOpacity;
+        }
+        if (cloudContainer) {
+          cloudContainer.style.opacity = state.cloudOpacity;
+        }
+
+        // Apply updated window glows across all existing cards on screen
+        updateCardsGlow(activeSkyIdx);
+
+        currentSkyIdx = (currentSkyIdx + 1) % skyStates.length;
+      }
+
+      // Transition every 15 seconds to make a full 1-minute cycle for 4 states
+      setInterval(changeSkyState, 15000);
+
+      // --- QRCode generation ---
+      function generateQR() {
+        const qrContainer = document.getElementById('qrcode');
+        if (!qrContainer) return;
+        qrContainer.innerHTML = '';
+        const baseUrl = window.location.href.split('?')[0].split('#')[0];
+        const targetUrl = baseUrl.replace(/index\.html$/, '') + 'letter.html';
+
+        new QRCode(qrContainer, {
+          text: targetUrl,
+          width: 100,
+          height: 100,
+          colorDark: "#060918",
+          colorLight: "#ffffff",
+          correctLevel: QRCode.CorrectLevel.H
+        });
+      }
+      generateQR();
+
+      // --- Cards grid coordinate picker logic ---
+      // Distributes float bounds accurately across visual stage area
+      function getRandomPosition() {
+        const rect = document.getElementById('main-content-area').getBoundingClientRect();
+        const cardWidth = 180;
+        const cardHeight = 200;
+
+        // Boundaries to prevent overlay on side pan, top labels or bottom indicators
+        const minX = 220; // safe cushion off left sidebar
+        const maxX = rect.width - cardWidth - 24;
+        const minY = 65; // safe cushion off upper tags
+        const maxY = rect.height - cardHeight - 80; // safe cushion off lower toasts
+
+        const x = Math.max(minX, minX + Math.random() * (maxX - minX));
+        const y = Math.max(minY, minY + Math.random() * (maxY - minY));
+
+        return { x, y };
+      }
+
+      // --- SVG flap flapping loops --- 
+      let flapAngle = 0;
+      let flapDirection = 1;
+      let flapAnimId = null;
+
+      function animateWings() {
+        flapAngle += flapDirection * 4;
+        if (flapAngle > 42) {
+          flapAngle = 42;
+          flapDirection = -1;
+        } else if (flapAngle < -10) {
+          flapAngle = -10;
+          flapDirection = 1;
+        }
+
+        const wl = document.getElementById('wl');
+        const wr = document.getElementById('wr');
+        if (wl && wr) {
+          wl.setAttribute('transform', `rotate(${flapAngle}, 20, 31)`);
+          wr.setAttribute('transform', `rotate(${-flapAngle}, 60, 31)`);
+        }
+        flapAnimId = requestAnimationFrame(animateWings);
+      }
+
+      // Flying envelope pipeline
+      let notificationTimeout = null;
+
+      function flyEnvelope(entry) {
+        const env = document.getElementById('flying-envelope');
+        if (!env) return;
+
+        // Reset flight baseline properties
+        env.style.transition = 'none';
+        env.style.left = '-120px';
+        env.style.top = '50%';
+        env.style.transform = 'translateY(-50%) rotate(0deg) scale(0.6)';
+        env.style.opacity = '0';
+
+        cancelAnimationFrame(flapAnimId);
+        flapAngle = 0;
+        flapDirection = 1;
+        animateWings();
+
+        // 1. Initiate 80ms start offset
+        setTimeout(() => {
+          // 2. Glides safely to left quadrant (20%)
+          env.style.transition = 'all 0.7s cubic-bezier(.22,.61,.36,1)';
+          env.style.opacity = '1';
+          env.style.left = '20%';
+          env.style.top = '35%';
+          env.style.transform = 'translateY(-50%) rotate(4deg) scale(1.05)';
+
+          // 3. Glides to middle ground (40%) at 800ms
+          setTimeout(() => {
+            env.style.left = '40%';
+            env.style.top = '45%';
+            env.style.transform = 'translateY(-50%) rotate(-2deg) scale(1)';
+
+            // 4. Shrinks and fades out at 1400ms toward center (48%)
+            setTimeout(() => {
+              env.style.left = '48%';
+              env.style.opacity = '0';
+              env.style.transform = 'translateY(-50%) rotate(-2deg) scale(0.8)';
+
+              // 5. Lands card on board at 1900ms
+              setTimeout(() => {
+                cancelAnimationFrame(flapAnimId);
+                addCard(entry);
+                showNotify(entry.name);
+              }, 500); // 1400 + 500 = 1900ms total
+              
+            }, 600); // 800 + 600 = 1400ms
+
+          }, 720); // 80 + 720 = 800ms
+
+        }, 80);
+      }
+
+      function showNotify(name) {
+        const bar = document.getElementById('notification-bar');
+        if (!bar) return;
+
+        if (notificationTimeout) clearTimeout(notificationTimeout);
+        bar.innerHTML = `<div class="inline-block px-5 py-2.5 bg-gradient-to-r from-pink-400/95 to-indigo-400/95 border border-white/20 text-white font-black rounded-xl text-xs shadow-2xl tracking-tight">💌 새 편지가 도착했어요! — [${name}]</div>`;
+        bar.style.opacity = '1';
+        bar.style.transform = 'translateY(0)';
+
+        notificationTimeout = setTimeout(() => {
+          bar.style.opacity = '0';
+          bar.style.transform = 'translateY(12px)';
+        }, 2800);
+      }
+
+      // --- Letter cards renderer ---
+      let cardIndex = 0;
+
+      function addCard(entry, animate = true) {
+        if (document.getElementById(`card-${entry.key}`)) return;
+
+        const mainArea = document.getElementById('main-content-area');
+        const card = document.createElement('div');
+        card.id = `card-${entry.key}`;
+        card.dataset.key = entry.key;
+        
+        const hasReply = entry.reply && entry.reply.trim().length > 0;
+        
+        // Base styling with slightly wider layout and special borders for cards with reply
+        card.className = `letter-card absolute w-[210px] p-4 rounded-[20px] border text-white shadow-2xl select-none z-10 flex flex-col transition-all duration-300
+          ${hasReply 
+            ? 'border-amber-400 bg-gradient-to-b from-amber-950/80 to-slate-900/90' 
+            : 'border-white/10'
+          }`;
+
+        // 5 cyclical styling patterns (index % 5) for normal cards
+        const themeIndex = cardIndex % 5;
+        cardIndex++;
+
+        const themes = [
+          { bg: 'linear-gradient(135deg, rgba(244, 63, 94, 0.25) 0%, rgba(30, 16, 80, 0.7) 100%)', border: 'rgba(244, 63, 94, 0.45)' }, // Soft pink
+          { bg: 'linear-gradient(135deg, rgba(6, 182, 212, 0.25) 0%, rgba(15, 23, 42, 0.7) 100%)', border: 'rgba(6, 182, 212, 0.45)' },  // Soft cyan
+          { bg: 'linear-gradient(135deg, rgba(168, 85, 247, 0.25) 0%, rgba(24, 24, 37, 0.7) 100%)', border: 'rgba(168, 85, 247, 0.45)' }, // Soft purple
+          { bg: 'linear-gradient(135deg, rgba(236, 72, 153, 0.25) 0%, rgba(20, 10, 40, 0.7) 100%)', border: 'rgba(236, 72, 153, 0.45)' }, // Cotton candy rose
+          { bg: 'linear-gradient(135deg, rgba(59, 130, 246, 0.25) 0%, rgba(23, 37, 84, 0.7) 100%)', border: 'rgba(59, 130, 246, 0.45)' }  // Dreamy sky blue
+        ];
+        
+        if (!hasReply) {
+          const theme = themes[themeIndex];
+          card.style.background = theme.bg;
+          card.style.borderColor = theme.border;
+        }
+        
+        card.style.backdropFilter = 'blur(8px)';
+        card.style.webkitBackdropFilter = 'blur(8px)';
+
+        // CSS animations assignments
+        if (animate) {
+          card.style.animation = 'cardIn 0.5s cubic-bezier(.175, .885, .32, 1.25) forwards, float 3.5s ease-in-out infinite';
+        } else {
+          card.style.animation = 'float 3.5s ease-in-out infinite';
+        }
+        // Organic float phase delays
+        card.style.animationDelay = `0s, -${Math.random() * 3.5}s`;
+
+        const pos = getRandomPosition();
+        card.style.left = `${pos.x}px`;
+        card.style.top = `${pos.y}px`;
+
+        // Calculate counts
+        const commentCount = entry.comments ? Object.keys(entry.comments).length : 0;
+
+        // Header and Body
+        let innerHtml = `
+          <div class="flex items-center justify-between gap-1.5 mb-2 border-b border-white/10 pb-1.5 min-w-0">
+            <div class="flex items-center gap-1.5 min-w-0">
+              <span class="text-xl shrink-0 select-none">${entry.emoji || '✏️'}</span>
+              <span class="text-xs font-bold truncate max-w-[100px]" style="text-shadow: 0 1px 2px rgba(0,0,0,0.5);">${entry.name}</span>
+            </div>
+            ${hasReply ? '<span class="text-[8.5px] font-black text-amber-300 bg-amber-400/20 px-1.5 py-0.5 rounded-full select-none shrink-0 border border-amber-400/30">👩‍🏫 답장배달</span>' : ''}
+          </div>
+          <p class="text-[11px] leading-relaxed text-slate-100 break-words whitespace-pre-wrap overflow-y-auto max-h-[75px] select-text pr-1 flex-1 scrollbar-none" style="text-shadow: 0 1px 1px rgba(0,0,0,0.4);">
+            ${entry.message}
+          </p>
+        `;
+
+        // Interactive Stats footer
+        innerHtml += `
+          <div class="flex items-center gap-2 mt-2 pt-1.5 border-t border-white/10 text-[9px] text-slate-300 select-none">
+            <span class="flex items-center gap-0.5 text-amber-300 font-bold select-none filter drop-shadow-[0_0_4px_rgba(251,191,36,0.6)]">
+              ⭐ ${entry.likes || 0}
+            </span>
+            <span class="flex items-center gap-0.5 text-blue-300 font-bold ml-1.5">
+              💬 ${commentCount}
+            </span>
+          </div>
+        `;
+
+        // Render Teacher Reply Inside Card
+        if (hasReply) {
+          innerHtml += `
+            <div class="mt-2 p-2 bg-amber-400/10 border border-amber-400/25 rounded-xl space-y-0.5">
+              <div class="text-[8.5px] text-amber-300 font-black flex items-center gap-0.5 select-none uppercase tracking-tight">
+                <span>✨</span> 선생님 답글
+              </div>
+              <p class="text-[10px] text-slate-200 leading-relaxed break-words font-medium line-clamp-2">${entry.reply}</p>
+            </div>
+          `;
+        }
+
+        card.innerHTML = innerHtml;
+
+        // Assign glow configuration datasets to support responsive real-time window light rendering
+        card.dataset.glowReply = hasReply ? 'true' : 'false';
+        if (hasReply) {
+          card.dataset.glowColor = '251, 191, 36'; // Warm amber/gold lighting
+        } else {
+          const glowColors = [
+            '244, 63, 94',  // Soft pink accent
+            '6, 182, 212',  // Soft cyan accent
+            '168, 85, 247', // Soft purple accent
+            '236, 72, 153', // Soft rose pink accent
+            '59, 130, 246'  // Dreamy sky blue accent
+          ];
+          card.dataset.glowColor = glowColors[themeIndex];
+        }
+
+        // Apply visual light intensity matching the current sky hour index
+        applyCardGlow(card, activeSkyIdx);
+
+        // Check cards bounds max 15 count
+        const existing = document.querySelectorAll('.letter-card');
+        if (existing.length >= 15) {
+          const oldest = existing[0];
+          shatterCard(oldest);
+          oldest.remove();
+        }
+
+        mainArea.appendChild(card);
+
+        // Self-destruct after exactly 10000ms (10s)
+        setTimeout(() => {
+          const node = document.getElementById(`card-${entry.key}`);
+          if (node) {
+            shatterCard(node);
+            node.remove();
+          }
+        }, 10000);
+      }
+
+      // --- Sidebar controller ---
+      function updateSidebar(visibleEntries) {
+        const list = document.getElementById('side-list');
+        if (!list) return;
+
+        list.innerHTML = '';
+        // 최신 8개 편지를 역순(최신 위)으로 표시
+        const items = [...visibleEntries].reverse().slice(0, 8);
+        
+        items.forEach((item, idx) => {
+          const hasReply = item.reply && item.reply.trim().length > 0;
+          const entryDiv = document.createElement('div');
+          
+          entryDiv.className = `p-3 rounded-xl bg-white/5 border flex flex-col gap-1.5 animate-fadeSlideIn
+            ${hasReply ? 'border-amber-400/30 bg-amber-400/5' : 'border-white/6'}`;
+          
+          entryDiv.style.animationDelay = `${idx * 0.05}s`;
+          
+          entryDiv.innerHTML = `
+            <div class="flex items-center justify-between gap-1.5 min-w-0">
+              <div class="flex items-center gap-1.5 min-w-0">
+                <span class="text-base select-none shrink-0">${item.emoji || '✏️'}</span>
+                <span class="text-xs font-bold text-white truncate max-w-[90px]">${item.name}</span>
+              </div>
+              ${hasReply ? '<span class="text-[8px] font-black text-amber-300">답장완료</span>' : ''}
+            </div>
+            <p class="text-[10px] text-slate-300 leading-relaxed line-clamp-2 break-all opacity-80">${item.message}</p>
+          `;
+          list.appendChild(entryDiv);
+        });
+      }
+
+      // --- Firebase sync loop ---
+      const lettersQuery = query(ref(db, 'letters'), orderByChild('timestamp'));
+      let isInitialLoad = true;
+      const prevKeys = new Set();
+
+      onValue(lettersQuery, (snapshot) => {
+        const data = snapshot.val();
+        const entries = [];
+        if (data) {
+          Object.keys(data).forEach(key => {
+            entries.push({ key, ...data[key] });
+          });
+        }
+
+        // visible === true filter
+        const visibleEntries = entries.filter(e => e.visible !== false);
+
+        // Update letter total counts badge
+        document.getElementById('letter-count').textContent = visibleEntries.length;
+
+        if (isInitialLoad) {
+          isInitialLoad = false;
+          
+          // Populate keys
+          visibleEntries.forEach(sub => prevKeys.add(sub.key));
+
+          // Draw the latest 3 cards right away without flying envelope animations
+          const latestCards = visibleEntries.slice(-3);
+          latestCards.forEach(e => addCard(e, false));
+
+          updateSidebar(visibleEntries);
+          cardIndex = visibleEntries.length;
+        } else {
+          // Identify newly added records
+          visibleEntries.forEach(e => {
+            if (!prevKeys.has(e.key)) {
+              prevKeys.add(e.key);
+              // Trigger flying animation pipeline sequentially
+              flyEnvelope(e);
+            }
+          });
+
+          // Instantly sync any visibility toggles or deletion actions made on Admin panel
+          const activeCards = document.querySelectorAll('.letter-card');
+          const currentVisibleKeys = new Set(visibleEntries.map(e => e.key));
+          activeCards.forEach(cardNode => {
+            const key = cardNode.dataset.key;
+            if (!currentVisibleKeys.has(key)) {
+              shatterCard(cardNode);
+              cardNode.remove();
+            }
+          });
+
+          updateSidebar(visibleEntries);
+        }
+      });
+    </script>
+  </body>
+</html>

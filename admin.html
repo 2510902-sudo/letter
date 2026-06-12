@@ -1,0 +1,511 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>편지 관리자 페이지 📋</title>
+    <!-- Tailwind CSS v4 Browser CDN -->
+    <script src="https://unpkg.com/@tailwindcss/browser@4"></script>
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght=300;400;500;700;900&display=swap');
+      
+      body {
+        font-family: 'Noto Sans KR', sans-serif;
+        background: linear-gradient(135deg, #030510 0%, #0a1133 50%, #151b4d 100%);
+        background-attachment: fixed;
+      }
+
+      /* Glowing Cotton-Candy gradient buttons */
+      .btn-cotton-candy {
+        background: linear-gradient(135deg, rgba(255, 192, 203, 1) 0%, rgba(230, 230, 250, 1) 40%, rgba(179, 205, 255, 1) 100%), 
+                    linear-gradient(135deg, #fbcfe8, #e0f2fe);
+        color: #1e1e4a;
+        font-weight: 700;
+        border: 1px solid rgba(255, 255, 255, 0.45);
+        box-shadow: 0 4px 15px rgba(255, 192, 203, 0.3), inset 0 1px 1px rgba(255, 255, 255, 0.5);
+        transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      }
+      .btn-cotton-candy:hover:not(:disabled) {
+        transform: translateY(-2px) scale(1.015);
+        box-shadow: 0 8px 24px rgba(255, 192, 203, 0.45);
+      }
+      .btn-cotton-candy:active:not(:disabled) {
+        transform: translateY(1px);
+      }
+
+      /* Custom scrollbar */
+      ::-webkit-scrollbar {
+        width: 6px;
+      }
+      ::-webkit-scrollbar-track {
+        background: rgba(255, 255, 255, 0.02);
+        border-radius: 10px;
+      }
+      ::-webkit-scrollbar-thumb {
+        background: rgba(255, 255, 255, 0.12);
+        border-radius: 10px;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background: rgba(255, 255, 255, 0.25);
+      }
+    </style>
+  </head>
+  <body class="relative min-h-screen text-slate-100 flex items-center justify-center p-4">
+
+    <!-- Auth / Password Screen Lock Overlay -->
+    <div id="auth-screen" class="relative w-full max-w-[360px] bg-slate-950/45 backdrop-blur-[24px] border border-white/14 rounded-[26px] p-6 shadow-[0_20px_50px_rgba(168,111,244,0.12),_inset_0_1px_2px_rgba(255,255,255,0.15)] z-10 duration-200">
+      <div class="text-center space-y-2 pb-4 border-b border-white/8">
+        <div class="text-4xl select-none filter drop-shadow-[0_0_8px_rgba(255,255,255,0.5)]">🔑</div>
+        <h1 class="text-lg font-bold tracking-tight text-white">교실 전광판 관리자</h1>
+        <p class="text-xs text-slate-300">선생님 전용 관리 페이지입니다. 🌸</p>
+      </div>
+
+      <div class="mt-5 space-y-4">
+        <div class="space-y-1">
+          <label for="admin-pw" class="block text-xs font-semibold text-slate-300">관리자 비밀번호</label>
+          <input 
+            type="password" 
+            id="admin-pw" 
+            placeholder="비밀번호 입력 (기본: 1234)"
+            class="w-full bg-white/4 border border-white/8 rounded-xl px-3.5 py-2.5 text-sm text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-pink-300/40 focus:border-pink-300/50 transition-all text-center shadow-inner"
+            onkeydown="if(event.key === 'Enter') handleLogin()"
+          />
+        </div>
+        <div id="auth-error" class="text-xs text-red-400 text-center hidden font-semibold">비밀번호가 틀렸어요 😅</div>
+        
+        <button 
+          onclick="handleLogin()"
+          class="w-full py-3 rounded-xl text-xs font-bold tracking-wide transition-all duration-200 cursor-pointer btn-cotton-candy"
+        >
+          입장하기 🪐
+        </button>
+      </div>
+    </div>
+
+    <!-- Main Admin Workspace Panel (Initially Hidden) -->
+    <div id="admin-workspace" class="hidden w-full max-w-[720px] z-10 py-6 space-y-6">
+      
+      <!-- Top Header & Dashboard Stats -->
+      <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white/4 border border-white/8 backdrop-blur-md rounded-2xl p-5 shadow-lg">
+        <div>
+          <h1 class="text-xl font-bold tracking-tight text-white flex items-center gap-1.5 justify-center md:justify-start">
+            <span>📋</span> 편지 관리 대시보드
+          </h1>
+          <p class="text-xs text-slate-400 mt-1">실시간으로 접수된 편지를 확인하며 사랑스러운 답장을 직접 남기세요.</p>
+        </div>
+        
+        <!-- Live Stat counts indicators -->
+        <div class="flex items-center justify-center gap-2 text-center">
+          <div class="px-3.5 py-1.5 rounded-xl bg-white/5 border border-white/8">
+            <div class="text-[10px] text-slate-400 font-medium tracking-tight">전체</div>
+            <div id="stat-total" class="text-xs font-black text-white">0</div>
+          </div>
+          <div class="px-3.5 py-1.5 rounded-xl bg-blue-500/10 border border-blue-500/20">
+            <div class="text-[10px] text-blue-400 font-medium tracking-tight">표시중</div>
+            <div id="stat-visible" class="text-xs font-black text-blue-400">0</div>
+          </div>
+          <div class="px-3.5 py-1.5 rounded-xl bg-amber-500/10 border border-amber-500/20">
+            <div class="text-[10px] text-amber-400 font-medium tracking-tight">숨김</div>
+            <div id="stat-hidden" class="text-xs font-black text-amber-400">0</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- General Operations / Bulk action control buttons -->
+      <div class="flex flex-wrap items-center justify-between gap-3 bg-white/2 border border-white/5 rounded-xl p-4">
+        <span class="text-xs text-slate-400 font-semibold select-none">일괄 작업 제어</span>
+        
+        <div class="flex flex-wrap gap-2">
+          <!-- Restore Show All -->
+          <button 
+            onclick="bulkShowAll()" 
+            class="px-3.5 py-2 border border-blue-500/30 hover:border-blue-500/50 hover:bg-blue-500/6 rounded-xl text-xs font-bold text-blue-400 transition-all cursor-pointer select-none"
+          >
+            ✅ 전체 표시
+          </button>
+          
+          <!-- Delete Hidden Entries -->
+          <button 
+            onclick="bulkPurgeHidden()" 
+            class="px-3.5 py-2 border border-amber-500/30 hover:border-amber-500/50 hover:bg-amber-500/6 rounded-xl text-xs font-bold text-amber-400 transition-all cursor-pointer select-none"
+          >
+            🗑 숨긴 편지 삭제
+          </button>
+          
+          <!-- Blow database entire logs -->
+          <button 
+            onclick="bulkClearAll()" 
+            class="px-3.5 py-2 border border-red-500/40 hover:border-red-500/60 hover:bg-red-500/8 rounded-xl text-xs font-bold text-red-400 transition-all cursor-pointer select-none"
+          >
+            ⚠️ 전체 삭제
+          </button>
+        </div>
+      </div>
+
+      <!-- Letters Grid list -->
+      <div class="space-y-4">
+        <h2 class="text-xs font-bold text-slate-400 tracking-wider px-1">편지 리스트</h2>
+        <!-- Scroll list containers -->
+        <div id="letters-container" class="space-y-4 max-h-[600px] overflow-y-auto pr-1">
+          <div class="text-center py-12 text-slate-500 text-xs">편지를 불러오는 중입니다...</div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Firebase SDK modules -->
+    <script type="module">
+      import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+      import { getDatabase, ref, onValue, update, remove, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+
+      // Firebase Configuration
+      const firebaseConfig = {
+        apiKey: "AIzaSyB-OCXxqYJ36d1_Xh5mbxuM7_hMKZQb_eA",
+        authDomain: "letter-79fa9.firebaseapp.com",
+        databaseURL: "https://letter-79fa9-default-rtdb.firebaseio.com",
+        projectId: "letter-79fa9",
+        storageBucket: "letter-79fa9.firebasestorage.app",
+        messagingSenderId: "80286170998",
+        appId: "1:80286170998:web:93e1c8d3a238e7ec848457",
+        measurementId: "G-9EMFPY4PEE"
+      };
+
+      // Initialize Firebase
+      const app = initializeApp(firebaseConfig);
+      const db = getDatabase(app);
+
+      // Password constants key
+      const ADMIN_PW = '1234';
+
+      let lastEntriesLoaded = [];
+
+      // --- Unlock Login sequence ---
+      window.handleLogin = function() {
+        const pwField = document.getElementById('admin-pw');
+        const errAlert = document.getElementById('auth-error');
+        const entered = pwField.value.trim();
+
+        if (entered === ADMIN_PW) {
+          errAlert.classList.add('hidden');
+          document.getElementById('auth-screen').style.opacity = '0';
+          setTimeout(() => {
+            document.getElementById('auth-screen').classList.add('hidden');
+            document.body.className = "relative min-h-screen text-slate-100 flex items-start justify-center p-4";
+            document.getElementById('admin-workspace').classList.remove('hidden');
+            loadLetters();
+          }, 250);
+        } else {
+          errAlert.classList.remove('hidden');
+          pwField.value = '';
+          pwField.focus();
+        }
+      }
+
+      // --- Time Ago formula ---
+      function timeAgo(timestamp) {
+        if (!timestamp) return '방금 전';
+        let ms = timestamp;
+        if (typeof ms === 'object' && ms !== null) ms = Date.now(); // default proxy
+        const now = Date.now();
+        const diffMs = now - ms;
+        const diffSec = Math.floor(diffMs / 1000);
+        if (diffSec < 60) return '방금 전';
+        const diffMin = Math.floor(diffSec / 60);
+        if (diffMin < 60) return `${diffMin}분 전`;
+        const diffHr = Math.floor(diffMin / 60);
+        if (diffHr < 24) return `${diffHr}시간 전`;
+        const diffDay = Math.floor(diffHr / 24);
+        return `${diffDay}일 전`;
+      }
+
+      // --- Fetching letters loop ---
+      function loadLetters() {
+        const lettersRef = ref(db, 'letters');
+        
+        onValue(lettersRef, (snapshot) => {
+          const container = document.getElementById('letters-container');
+          container.innerHTML = '';
+          const data = snapshot.val();
+          
+          const rawEntries = [];
+          if (data) {
+            Object.keys(data).forEach(key => {
+              rawEntries.push({ key, ...data[key] });
+            });
+          }
+
+          // Chronological reverse sorting (newest on top)
+          rawEntries.sort((a,b) => {
+            const timeA = typeof a.timestamp === 'number' ? a.timestamp : 0;
+            const timeB = typeof b.timestamp === 'number' ? b.timestamp : 0;
+            return timeB - timeA;
+          });
+
+          lastEntriesLoaded = rawEntries;
+
+          // Compute global state indicators
+          let totalCount = rawEntries.length;
+          let visibleCount = rawEntries.filter(e => e.visible !== false).length;
+          let hiddenCount = totalCount - visibleCount;
+
+          document.getElementById('stat-total').textContent = totalCount;
+          document.getElementById('stat-visible').textContent = visibleCount;
+          document.getElementById('stat-hidden').textContent = hiddenCount;
+
+          if (rawEntries.length === 0) {
+            container.innerHTML = `<div class="text-center py-20 text-slate-500 text-xs">작성된 편지가 하나도 없습니다. 📪</div>`;
+            return;
+          }
+
+          rawEntries.forEach(entry => {
+            const isHidden = entry.visible === false;
+            const hasReply = entry.reply && entry.reply.trim().length > 0;
+            const itemDiv = document.createElement('div');
+            
+            // Assign opacity class if hidden or opaque
+            itemDiv.className = `p-4 px-5 rounded-[18px] bg-white/6 border border-white/10 transition-all flex flex-col gap-4 shadow-md 
+              ${isHidden ? 'opacity-40 border-dashed border-amber-500/30' : ''} 
+              ${hasReply ? 'border-l-4 border-l-amber-400' : ''}`;
+            
+            // Generate comments count
+            const commentCount = entry.comments ? Object.keys(entry.comments).length : 0;
+
+            itemDiv.innerHTML = `
+              <!-- Main Content Area -->
+              <div class="flex items-start justify-between gap-4">
+                <div class="flex items-start gap-3.5 flex-1 min-w-0">
+                  <div class="text-3xl bg-white/5 border border-white/8 rounded-xl p-2.5 flex items-center justify-center select-none shrink-0 w-12 h-12">
+                    ${entry.emoji || '✏️'}
+                  </div>
+                  <div class="space-y-1.5 flex-1 min-w-0">
+                    <div class="flex items-center flex-wrap gap-2">
+                      <span class="text-sm font-bold text-white tracking-tight">${entry.name}</span>
+                      <span class="text-[10px] text-slate-400 font-medium">${timeAgo(entry.timestamp)}</span>
+                      
+                      <!-- Likes Badge -->
+                      <span class="px-2 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/20 text-[9.5px] font-bold text-amber-300 flex items-center gap-1 leading-none">
+                        <span>⭐</span> ${entry.likes || 0}
+                      </span>
+
+                      <!-- Comments Badge -->
+                      <span class="px-2 py-0.5 rounded-full bg-slate-500/15 border border-white/8 text-[9.5px] font-bold text-slate-300 flex items-center gap-1 leading-none">
+                        <span>💬</span> ${commentCount}
+                      </span>
+
+                      ${isHidden ? '<span class="px-1.5 py-0.5 rounded bg-amber-500/10 border border-amber-500/20 text-[9px] font-semibold text-amber-400 select-none">숨김</span>' : ''}
+                      ${hasReply ? '<span class="px-1.5 py-0.5 rounded bg-green-500/10 border border-green-500/20 text-[9px] font-bold text-green-400 select-none">답장완료</span>' : ''}
+                    </div>
+                    <p class="text-[12.5px] leading-relaxed text-slate-200 select-text whitespace-pre-wrap break-all">${entry.message}</p>
+                  </div>
+                </div>
+
+                <!-- Main top action controls -->
+                <div class="flex items-center gap-1.5 shrink-0">
+                  <!-- Reply Button -->
+                  <button 
+                    onclick="toggleReplyForm('${entry.key}')"
+                    class="px-3.5 py-1.5 rounded-lg border border-blue-400/40 text-blue-300 hover:bg-blue-500/10 hover:border-blue-500/65 text-[11px] font-extrabold select-none cursor-pointer tracking-tight transition-all duration-150"
+                  >
+                    ${hasReply ? '답장수정' : '답장달기'}
+                  </button>
+
+                  <button 
+                    onclick="toggleVisibility('${entry.key}', ${!isHidden})"
+                    class="px-3.5 py-1.5 rounded-lg border text-[11px] font-bold select-none cursor-pointer tracking-tight transition-all duration-150
+                      ${isHidden 
+                        ? 'border-blue-500/30 text-blue-400 hover:bg-blue-500/10' 
+                        : 'border-slate-500/30 text-slate-400 hover:bg-white/5'
+                      }"
+                  >
+                    ${isHidden ? '표시하기' : '가리기'}
+                  </button>
+
+                  <button 
+                    onclick="deleteLetter('${entry.key}')"
+                    class="px-3.5 py-1.5 rounded-lg border border-red-500/30 text-red-400 hover:bg-red-500/10 text-[11px] font-bold select-none cursor-pointer tracking-tight transition-all duration-150"
+                  >
+                    삭제
+                  </button>
+                </div>
+              </div>
+
+              <!-- Reply Display (If active) -->
+              ${hasReply ? `
+                <div class="mt-1 bg-amber-400/5 border border-amber-400/15 rounded-xl p-3.5 relative">
+                  <div class="text-[10px] text-amber-300 font-extrabold flex items-center gap-1 mb-1.5 select-none">
+                    <span>👩‍🏫</span> <span>조회되는 답장 내용:</span>
+                  </div>
+                  <p class="text-xs text-slate-200 break-all leading-relaxed whitespace-pre-wrap font-medium">${entry.reply}</p>
+                  
+                  <button 
+                    onclick="deleteReply('${entry.key}')"
+                    class="absolute top-3.5 right-3.5 text-[10px] font-bold text-red-400 hover:text-red-300 transition-all cursor-pointer select-none underline"
+                  >
+                    답장 삭제
+                  </button>
+                </div>
+              ` : ''}
+
+              <!-- Inline edit reply area form (Collapsible) -->
+              <div id="reply-form-${entry.key}" class="hidden mt-2 bg-white/2 border border-white/5 rounded-xl p-4 space-y-3">
+                <div class="flex items-center justify-between">
+                  <span class="text-xs font-bold text-blue-300 flex items-center gap-1 select-none">
+                    <span>✍️</span> ${entry.name}님을 위한 답장 작성
+                  </span>
+                  <button 
+                    onclick="toggleReplyForm('${entry.key}')"
+                    class="text-[10px] text-slate-400 hover:text-white transition-all cursor-pointer"
+                  >
+                    취소
+                  </button>
+                </div>
+
+                <textarea 
+                  id="reply-input-${entry.key}"
+                  rows="3"
+                  placeholder="사랑과 응원을 담아 정성껏 답장을 적어주세요. 학생 화면 최상단에 은하수 빛으로 빛나는 별과 함께 즉시 배달됩니다. ✨"
+                  class="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-blue-500/50 resize-none leading-relaxed"
+                >${entry.reply || ''}</textarea>
+
+                <div class="flex items-center justify-end gap-2">
+                  <button 
+                    onclick="toggleReplyForm('${entry.key}')"
+                    class="px-3.5 py-1.5 bg-white/5 hover:bg-white/10 border border-white/8 rounded-lg text-slate-300 text-[10px] font-medium transition-all duration-150 cursor-pointer select-none"
+                  >
+                    닫기
+                  </button>
+                  <button 
+                    onclick="saveReply('${entry.key}')"
+                    class="px-4 py-1.5 bg-blue-500 hover:bg-blue-600 rounded-lg text-white text-[10px] font-extrabold transition-all duration-150 cursor-pointer select-none"
+                  >
+                    답장 배달하기 💌
+                  </button>
+                </div>
+              </div>
+            `;
+            container.appendChild(itemDiv);
+          });
+          
+        });
+      }
+
+      // --- Reply UI Interaction handlers ---
+      window.toggleReplyForm = function(key) {
+        const formDiv = document.getElementById(`reply-form-${key}`);
+        if (!formDiv) return;
+        if (formDiv.classList.contains('hidden')) {
+          formDiv.classList.remove('hidden');
+          document.getElementById(`reply-input-${key}`).focus();
+        } else {
+          formDiv.classList.add('hidden');
+        }
+      }
+
+      window.saveReply = async function(key) {
+        const replyTextarea = document.getElementById(`reply-input-${key}`);
+        const replyVal = replyTextarea.value.trim();
+
+        if (!replyVal) {
+          alert('내용을 입력해주세요.');
+          return;
+        }
+
+        try {
+          await update(ref(db, `letters/${key}`), {
+            reply: replyVal,
+            replyTimestamp: serverTimestamp()
+          });
+
+          // Collapse reply input area
+          document.getElementById(`reply-form-${key}`).classList.add('hidden');
+        } catch (error) {
+          console.error("Failed saving teacher reply: ", error);
+          alert("답장을 발송하는 도중 에러가 생겼습니다.");
+        }
+      }
+
+      window.deleteReply = async function(key) {
+        if (confirm("이 편지에 단 답장을 삭제할까요?")) {
+          try {
+            await update(ref(db, `letters/${key}`), {
+              reply: null,
+              replyTimestamp: null
+            });
+          } catch(e) {
+            console.error(e);
+            alert("답장 삭제가 실패했습니다.");
+          }
+        }
+      }
+
+      // --- Individual database updates ---
+      window.toggleVisibility = async function(key, makeVisible) {
+        try {
+          await update(ref(db, `letters/${key}`), { visible: makeVisible });
+        } catch(e) {
+          console.error("Failed toggling visibility context: ", e);
+          alert("설정을 변경하지 못했습니다. 다시 시도해 주세요.");
+        }
+      }
+
+      window.deleteLetter = async function(key) {
+        if (confirm("이 편지를 삭제할까요?")) {
+          try {
+            await remove(ref(db, `letters/${key}`));
+          } catch(e) {
+            console.error("Failed deleting catalog entry: ", e);
+            alert("편지를 삭제하지 못했습니다.");
+          }
+        }
+      }
+
+      // --- Bulk database updates operations ---
+      window.bulkShowAll = async function() {
+        if (lastEntriesLoaded.length === 0) return;
+        const updates = {};
+        lastEntriesLoaded.forEach(entry => {
+          updates[`letters/${entry.key}/visible`] = true;
+        });
+        try {
+          await update(ref(db), updates);
+        } catch(e) {
+          console.error(e);
+          alert("일괄 작업이 실패했습니다.");
+        }
+      }
+
+      window.bulkPurgeHidden = async function() {
+        const hiddenEntries = lastEntriesLoaded.filter(e => e.visible === false);
+        if (hiddenEntries.length === 0) {
+          alert("삭제할 숨겨진 편지가 없습니다.");
+          return;
+        }
+        if (confirm(`정말 숨겨진 편지 ${hiddenEntries.length}개를 모두 삭제할까요?`)) {
+          try {
+            for (const item of hiddenEntries) {
+              await remove(ref(db, `letters/${item.key}`));
+            }
+          } catch(e) {
+            console.error(e);
+            alert("일괄 삭제하는 과정에 오류가 발생했습니다.");
+          }
+        }
+      }
+
+      window.bulkClearAll = async function() {
+        if (lastEntriesLoaded.length === 0) {
+          alert("삭제할 편지가 없습니다.");
+          return;
+        }
+        if (confirm("정말 모든 편지를 삭제할까요? 되돌릴 수 없어요!")) {
+          try {
+            await remove(ref(db, 'letters'));
+          } catch(e) {
+            console.error(e);
+            alert("모든 편지를 삭제하지 못했습니다.");
+          }
+        }
+      }
+    </script>
+  </body>
+</html>
